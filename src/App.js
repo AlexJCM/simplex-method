@@ -13,6 +13,7 @@ var zeta = [];
 var array_pos_artifi = [];
 var array_borrar_pos_artifi = [];
 var clic_generar = false;
+var es_decimal = false;
 
 function App() {
   const generarInputs = () => {
@@ -21,37 +22,37 @@ function App() {
       document.getElementById("num_restricciones").value
     );
 
-    var str_table = "";
+    var str_table_inputs = "";
 
     document.getElementById("maximizar").checked === true
       ? (tipo_operacion = 1)
       : (tipo_operacion = 0);
 
-    str_table += "<table align='center'> <tr> <td></td>";
+    str_table_inputs += "<table align='center'> <tr> <td></td>";
 
     for (var i = 0; i < numero_variables; i++)
-      str_table += "<td ><strong>X" + (i + 1) + "</strong></td>";
-    str_table += "<td></td> <td></td></tr><tr>";
+      str_table_inputs += "<td ><strong>X" + (i + 1) + "</strong></td>";
+    str_table_inputs += "<td></td> <td></td></tr><tr>";
 
     if (tipo_operacion === 1)
-      str_table += "<td><strong> Maximizar Z </strong> </td>";
-    else str_table += "<td><strong> Minimizar Z </strong></td>";
+      str_table_inputs += "<td><strong> Maximizar Z </strong> </td>";
+    else str_table_inputs += "<td><strong> Minimizar Z </strong></td>";
 
     for (var j = 0; j < numero_variables; j++)
-      str_table +=
+      str_table_inputs +=
         "<td><input size='7' style='text-align:center' type='number name='valor_x" +
         j +
         "' id='valor_x" +
         j +
         "'></td> ";
-    str_table += "<td></td><td></td></tr>";
+    str_table_inputs += "<td></td><td></td></tr>";
 
     /*eslint-disable */
     for (var i = 0; i < numero_restricciones; i++) {
-      str_table +=
+      str_table_inputs +=
         "<tr><td><strong> Restricción " + (i + 1) + " </strong></td>";
       for (var j = 0; j < numero_variables; j++)
-        str_table +=
+        str_table_inputs +=
           "<td><input size='7' style='text-align:center' type='number name='valor_r" +
           i +
           "x" +
@@ -61,15 +62,15 @@ function App() {
           "x" +
           j +
           "' ></td>";
-      str_table +=
+      str_table_inputs +=
         "<td><select name='operador_r" +
         i +
         "' id='operador_r" +
         i +
         "'><option selected value='<=''><=</option>";
-      str_table +=
+      str_table_inputs +=
         "<option value='>='> >= </option><option value='='> = </option></select></td>";
-      str_table +=
+      str_table_inputs +=
         "<td><input size='7' style='text-align:center' type='number name='resultado_r" +
         i +
         "' id='resultado_r" +
@@ -77,8 +78,8 @@ function App() {
         "' ></td></tr>";
     }
     /*eslint-enable */
-    str_table += "</table>";
-    document.getElementById("table_inputs").innerHTML = str_table;
+    str_table_inputs += "</table>";
+    document.getElementById("table_inputs").innerHTML = str_table_inputs;
     clic_generar = true;
   };
 
@@ -136,7 +137,6 @@ function App() {
         <br />
         <div id="table_inputs"> </div>
         <div id="solucion_optima"></div>
-        {/*         <div id="datos"> </div>       */}
       </Content>
       <br />
       <br />
@@ -150,12 +150,12 @@ function App() {
 export default App;
 
 ////////////////////////////////////////////
-var tipo_operacion = 1;
+var tipo_operacion = 1; //1 es maximizacion
 var numero_variables;
 var numero_restricciones;
 var cont_eses = 0;
 var total = 0;
-var cont_variables;
+var cantidad_variables;
 var es2 = 0;
 var is_minimo = 0;
 var hacer_uno;
@@ -175,22 +175,24 @@ const resolverEjercicio = () => {
     );
 
     for (let i = 0; i < numero_variables; i++) {
+      //si no ingresa un valor en la funcion objetivo lo rellenamos con 0
       document.getElementById("valor_x" + i).value === ""
-        ? (zeta[i] = 0.0)
+        ? (zeta[i] = 0)
         : (zeta[i] = parseFloat(document.getElementById("valor_x" + i).value));
     }
 
     for (var i = 0; i < numero_restricciones; i++) {
       for (var j = 0; j < numero_variables; j++) {
+        //si no ingresa un valor en alguna restriccion lo rellenamos con 0
         document.getElementById("valor_r" + i + "x" + j).value === ""
-          ? (array_problema[i][j] = 0.0)
+          ? (array_problema[i][j] = 0)
           : (array_problema[i][j] = parseFloat(
               document.getElementById("valor_r" + i + "x" + j).value
             ));
       }
 
       if (document.getElementById("resultado_r" + i).value === "")
-        array_problema[i][numero_variables] = 0.0;
+        array_problema[i][numero_variables] = 0;
       else
         array_problema[i][numero_variables] = parseFloat(
           document.getElementById("resultado_r" + i).value
@@ -198,7 +200,8 @@ const resolverEjercicio = () => {
       array_problema[i][numero_variables + 1] = document.getElementById(
         "operador_r" + i
       ).value;
-    } //fin for
+    }
+    //fin for
     generarSolucion();
   }
 };
@@ -213,7 +216,7 @@ const inicializarMatriz = (matriz, num_filas, num_col) => {
 };
 
 const estandarizarEcuaciones = matriz => {
-  cont_variables = numero_variables;
+  cantidad_variables = numero_variables;
   // inicializarMatriz(matriz, numero_restricciones, total + 2); //
   for (var i = 1; i <= numero_restricciones; i++) {
     for (var j = 0; j <= numero_variables; j++) {
@@ -225,23 +228,28 @@ const estandarizarEcuaciones = matriz => {
 
   array_pos_artifi.push(0);
 
-  //Añadimos variables de holgura, exceso y artificiales en el orden de aparicion
+  //Verificamos el operador y Añadimos variables de holgura,
+  //exceso y artificiales en el orden de aparicion
   for (let i = 0; i < numero_restricciones; i++) {
     if (array_problema[i][numero_variables + 1] === "<=") {
-      matriz[i + 1][++cont_variables] = 1;
+      //vamos agregando la variable de holgura en cada fila para cada restriccion
+      matriz[i + 1][++cantidad_variables] = 1;
     } else if (array_problema[i][numero_variables + 1] === "=") {
-      matriz[i + 1][++cont_variables] = 1;
-      array_borrar_pos_artifi.push(cont_variables);
-      matriz[0][cont_variables] = -1;
+      matriz[i + 1][++cantidad_variables] = 1;
+      array_borrar_pos_artifi.push(cantidad_variables);
+      matriz[0][cantidad_variables] = -1;
       array_pos_artifi.push(i + 1);
+      //Caso contrario agregamos variables de exceso
     } else if (array_problema[i][numero_variables + 1] === ">=") {
-      matriz[i + 1][++cont_variables] = -1;
-      matriz[i + 1][++cont_variables] = 1;
-      array_borrar_pos_artifi.push(cont_variables);
-      matriz[0][cont_variables] = -1;
+      matriz[i + 1][++cantidad_variables] = -1;
+      matriz[i + 1][++cantidad_variables] = 1;
+      array_borrar_pos_artifi.push(cantidad_variables);
+      matriz[0][cantidad_variables] = -1;
       array_pos_artifi.push(i + 1);
     }
   }
+  console.log("array_borrar_pos_artifi", array_borrar_pos_artifi);
+  console.log("array_pos_artifi", array_pos_artifi);
   matriz[0][0] = 1.0;
 };
 
@@ -257,11 +265,12 @@ const generarSolucion = () => {
 
   validarEntrada(array_problema);
 
-  var str_table = "<div align='center'><br><h2>Tabla Inicial</h2></div>";
+  //var str_table = "<div align='center'><br><h2>Restriciones</h2></div>"; //
+  var str_table = "";
   document.getElementById("content").innerHTML += str_table;
-  //imprimeTabla(array_problema, numero_restricciones-1, numero_variables);
+  // imprimeTabla(array_problema, numero_restricciones - 1, numero_variables); //
   inicializarMatriz(tabla_a, numero_restricciones, total + 2);
-  //imprimeTabla(tabla_a, numero_restricciones, total+1);
+  // imprimeTabla(tabla_a, numero_restricciones, total + 1); //
   estandarizarEcuaciones(tabla_a);
   if (cont_eses !== numero_restricciones) {
     imprimeTabla(tabla_a, numero_restricciones, total + 1);
@@ -272,20 +281,20 @@ const generarSolucion = () => {
     imprimeTabla(tabla_a, numero_restricciones, total + 1);
     str_table = "<br><div align = 'center'><br><h2>Primera Fase</h2></div>";
     document.getElementById("content").innerHTML += str_table;
-    faseUno(tabla_a);
+    primeraFase(tabla_a);
   }
   es2++;
   //imprimeTabla(tabla_a, numero_restricciones, total+1);
   str_table = "<br><div align = 'center'><br><h2>Segunda Fase</h2></div>";
   document.getElementById("content").innerHTML += str_table;
-  iniciarFase2(tabla_a);
+  iniciarSegundaFase(tabla_a);
   //imprimeTabla(tabla_b, numero_restricciones, total - array_borrar_pos_artifi.length+1);
-  faseDos();
+  segundaFase();
   //imprimeTabla(tabla_b, numero_restricciones, total - array_borrar_pos_artifi.length+1);
 };
 
 //Calculamos la primera fase con el tabla
-const faseUno = matriz => {
+const primeraFase = matriz => {
   var bandera = 1;
   var iteracion = 1;
 
@@ -322,7 +331,6 @@ const faseUno = matriz => {
     // Calculamos las variables de la siguiente iteracion
     var hacer_uno_a = matriz[sale_min][entra_max];
     hacer_uno = parseFloat(hacer_uno_a);
-    //console.log(hacer_uno);
 
     str_table = "<div align = 'center'><br><p>Entra X" + entra_max + "</p>";
     str_table += "<p>Sale R" + sale_min + "</p></div>";
@@ -339,21 +347,19 @@ const faseUno = matriz => {
       if (matriz[i][entra_max] !== 0 && i !== sale_min) {
         var aux = matriz[i][entra_max];
         for (var j = 0; j <= total + 1; j++) {
-          //vector.push(matriz[sale_min][j]*aux*-1);
           matriz[i][j] += matriz[sale_min][j] * aux * -1;
           if (
             matriz[i][j] <= 2.220446049250313e-8 &&
             matriz[i][j] >= -4.440892098500626e-8
           )
             matriz[i][j] = 0;
-          //matriz[i][j] = parseFloat(matriz[i][j]);
         }
       }
     }
   }
 };
 
-const iniciarFase2 = matriz => {
+const iniciarSegundaFase = matriz => {
   inicializarMatriz(
     tabla_b,
     numero_restricciones + 1,
@@ -376,7 +382,7 @@ const iniciarFase2 = matriz => {
     else tabla_b[0][j + 1] = -1 * zeta[j];
 };
 
-const faseDos = () => {
+const segundaFase = () => {
   //imprimeTabla(tabla_b, numero_restricciones, total - array_borrar_pos_artifi.length+1);
   if (tipo_operacion === 0) {
     var str_table =
@@ -459,17 +465,6 @@ const finalizarFase = matriz => {
     var hacer_uno_a = matriz[sale][entra];
     hacer_uno = parseFloat(hacer_uno_a);
 
-    //Version actual
-    /*
-            for (var i = 1; i <= numero_restricciones; i++)
-            {
-                if (tabla_b[i+1][entra] >  0)
-                    my_map.set(tabla_b[i+1][total-array_borrar_pos_artifi.length+1]/tabla_b[i+1][entra], i+1);
-            }
-
-            sale = my_map.values().next().value;
-            hacer_uno = parseFloat(tabla_b[sale][entra]);
-            */
     str_table = "<div align = 'center'><br><p>Entra X" + entra + "</p>";
     str_table += "<p>Sale X" + sale + "</p></div>";
     document.getElementById("content").innerHTML += str_table;
@@ -500,20 +495,13 @@ const ajuste = (matriz, num_filas, num_col, nc2) => {
       for (var i = 1; i <= num_filas; i++)
         if (matriz[i][j] === 1)
           for (var k = 0; k <= nc2; k++) {
-            /* if (is_minimo===numero_restricciones*numero_variables && k>0){
-                                matriz[0][k]+=matriz[i][k]*-1*aux;
-                                matriz[0][k]*=.1;
-                            }
-                            else
-                            */ matriz[0][
-              k
-            ] += matriz[i][k] * -1 * aux;
+            matriz[0][k] += matriz[i][k] * -1 * aux;
           }
     }
 };
 
-const imprimeTabla = (matriz, nf, nc) => {
-  var br = document.createElement("br");
+//Grafica la tabla
+const imprimeTabla = (matriz, num_filas, num_col) => {
   var an = document.getElementById("content");
   var table = document.createElement("table");
   table.id = "my_table";
@@ -526,7 +514,7 @@ const imprimeTabla = (matriz, nf, nc) => {
   tr.appendChild(td);
   table.appendChild(tr);
 
-  for (let l = 1; l < nc; l++) {
+  for (let l = 1; l < num_col; l++) {
     text = "";
     td = document.createElement("td");
     text = document.createTextNode("X" + l);
@@ -541,18 +529,27 @@ const imprimeTabla = (matriz, nf, nc) => {
   tr.appendChild(td);
   table.appendChild(tr);
 
-  for (var k = 0; k <= nf; k++) {
+  for (var k = 0; k <= num_filas; k++) {
     tr = document.createElement("tr");
-    for (var l = 0; l <= nc; l++) {
+    for (var l = 0; l <= num_col; l++) {
       var text = "";
       var td = document.createElement("td");
-      text = document.createTextNode(matriz[k][l].toFixed(4));
+      //
+      verificarSiEsDecimal(matriz[k][l]);
+      es_decimal
+        ? (text = document.createTextNode(matriz[k][l].toFixed(2)))
+        : (text = document.createTextNode(matriz[k][l]));
+      //
       td.appendChild(text);
       tr.appendChild(td);
       table.appendChild(tr);
     }
     an.appendChild(table);
   }
+};
+
+const verificarSiEsDecimal = numero => {
+  numero % 1 === 0 ? (es_decimal = false) : (es_decimal = true);
 };
 
 const validarEntrada = matriz => {
